@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -14,7 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MODELS, mockRoutingRules, type RoutingRuleRow } from "@/lib/mock-data";
+import { useSession } from "@/hooks/use-session";
+import { useDeleteRoutingRule, useRoutingRules, useUpsertRoutingRule } from "@/lib/queries";
+import { MODELS, type RoutingRuleRow } from "@/lib/types";
 
 export const Route = createFileRoute("/rules")({
   head: () => ({
@@ -35,9 +37,15 @@ export const Route = createFileRoute("/rules")({
   component: RulesPage,
 });
 
-const EMPTY: RoutingRuleRow = {
-  id: "",
-  user_id: "",
+type Draft = {
+  id?: string;
+  task_type: string;
+  cheap_model: string;
+  fallback_model: string;
+  quality_threshold: number;
+};
+
+const EMPTY: Draft = {
   task_type: "",
   cheap_model: MODELS[0],
   fallback_model: MODELS[2],
@@ -45,26 +53,34 @@ const EMPTY: RoutingRuleRow = {
 };
 
 function RulesPage() {
-  const [rules, setRules] = useState<RoutingRuleRow[]>(mockRoutingRules);
-  const [draft, setDraft] = useState<RoutingRuleRow | null>(null);
+  const { session } = useSession();
+  const { data: rules, isLoading } = useRoutingRules(!!session);
+  const upsert = useUpsertRoutingRule();
+  const remove = useDeleteRoutingRule();
+  const [draft, setDraft] = useState<Draft | null>(null);
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft) return;
-    // STUB: replace with supabase.from('routing_rules').upsert(...)
-    setRules((prev) =>
-      draft.id
-        ? prev.map((r) => (r.id === draft.id ? draft : r))
-        : [...prev, { ...draft, id: `rule_${Date.now()}` }],
-    );
-    toast.success(draft.id ? "Rule updated" : "Rule created");
-    setDraft(null);
+    try {
+      await upsert.mutateAsync(draft);
+      toast.success(draft.id ? "Rule updated" : "Rule created");
+      setDraft(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save rule");
+    }
   };
 
-  const remove = (id: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-    toast.success("Rule deleted");
+  const del = async (id: string) => {
+    try {
+      await remove.mutateAsync(id);
+      toast.success("Rule deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete rule");
+    }
   };
+
+  const list = rules ?? [];
 
   return (
     <AppShell
@@ -77,7 +93,11 @@ function RulesPage() {
         </Button>
       }
     >
-      {rules.length === 0 ? (
+      {isLoading ? (
+        <div className="panel grid place-items-center px-6 py-16">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : list.length === 0 ? (
         <div className="panel grid place-items-center px-6 py-16 text-center">
           <p className="text-sm font-medium">No routing rules yet</p>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -91,7 +111,7 @@ function RulesPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {rules.map((rule) => (
+          {list.map((rule: RoutingRuleRow) => (
             <div
               key={rule.id}
               className="panel flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4"
@@ -104,14 +124,28 @@ function RulesPage() {
               <Field label="Fallback" value={rule.fallback_model} />
               <div>
                 <p className="text-xs text-muted-foreground">Quality threshold</p>
-                <p className="tabular mt-0.5 text-sm">{rule.quality_threshold.toFixed(2)}</p>
+                <p className="tabular mt-0.5 text-sm">
+                  {Number(rule.quality_threshold).toFixed(2)}
+                </p>
               </div>
               <div className="ml-auto flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => setDraft(rule)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    setDraft({
+                      id: rule.id,
+                      task_type: rule.task_type,
+                      cheap_model: rule.cheap_model,
+                      fallback_model: rule.fallback_model,
+                      quality_threshold: Number(rule.quality_threshold),
+                    })
+                  }
+                >
                   <Pencil className="size-4" />
                   <span className="sr-only">Edit {rule.task_type}</span>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => remove(rule.id)}>
+                <Button variant="ghost" size="icon" onClick={() => del(rule.id)}>
                   <Trash2 className="size-4" />
                   <span className="sr-only">Delete {rule.task_type}</span>
                 </Button>
@@ -179,7 +213,15 @@ function RulesPage() {
                 <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
                   Cancel
                 </Button>
-                <Button type="submit">{draft.id ? "Save changes" : "Create rule"}</Button>
+                <Button type="submit" disabled={upsert.isPending}>
+                  {upsert.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : draft.id ? (
+                    "Save changes"
+                  ) : (
+                    "Create rule"
+                  )}
+                </Button>
               </DialogFooter>
             </form>
           )}
@@ -209,6 +251,9 @@ function ModelSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const options = MODELS.includes(value as (typeof MODELS)[number])
+    ? [...MODELS]
+    : [value, ...MODELS];
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -218,7 +263,7 @@ function ModelSelect({
         onChange={(e) => onChange(e.target.value)}
         className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {MODELS.map((m) => (
+        {options.map((m) => (
           <option key={m} value={m} className="bg-popover">
             {m}
           </option>

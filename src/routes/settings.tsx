@@ -3,13 +3,9 @@ import { Check } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import {
-  currency,
-  mockSavings,
-  mockSubscription,
-  mockUser,
-  type Tier,
-} from "@/lib/mock-data";
+import { useSession } from "@/hooks/use-session";
+import { useSavingsSummary, useSubscription, useUserRow } from "@/lib/queries";
+import { currency, type Tier } from "@/lib/types";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -52,8 +48,15 @@ const TIERS: { tier: Tier; price: string; limit: string; perks: string[] }[] = [
 ];
 
 function SettingsPage() {
-  const { tier, spend_limit, current_usage } = mockSubscription;
-  const pct = Math.min(100, (current_usage / spend_limit) * 100);
+  const { session, user } = useSession();
+  const { data: subscription } = useSubscription(!!session);
+  const { data: userRow } = useUserRow(!!session);
+  const { data: savings } = useSavingsSummary(!!session);
+
+  const tier = subscription?.tier;
+  const spend_limit = Number(subscription?.spend_limit ?? 0);
+  const current_usage = Number(subscription?.current_usage ?? 0);
+  const pct = spend_limit ? Math.min(100, (current_usage / spend_limit) * 100) : 0;
 
   return (
     <AppShell title="Settings" description="Subscription, limits and account details.">
@@ -73,8 +76,8 @@ function SettingsPage() {
           </div>
           <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
             <Row label="Spend limit" value={currency(spend_limit, 0)} />
-            <Row label="Remaining" value={currency(spend_limit - current_usage)} />
-            <Row label="Saved by routing" value={currency(mockSavings.saved)} accent />
+            <Row label="Remaining" value={currency(Math.max(0, spend_limit - current_usage))} />
+            <Row label="Saved by routing" value={currency(savings?.saved ?? 0)} accent />
           </div>
         </section>
 
@@ -125,8 +128,15 @@ function SettingsPage() {
         <section className="panel p-5">
           <h2 className="text-sm font-medium">Account</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Row label="Email" value={mockUser.email} />
-            <Row label="Member since" value={new Date(mockUser.created_at).toLocaleDateString()} />
+            <Row label="Email" value={userRow?.email ?? user?.email ?? "—"} />
+            <Row
+              label="Member since"
+              value={
+                userRow?.created_at
+                  ? new Date(userRow.created_at).toLocaleDateString()
+                  : "—"
+              }
+            />
           </div>
         </section>
       </div>

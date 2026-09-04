@@ -1,15 +1,18 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   GitBranch,
   KeyRound,
   Settings as SettingsIcon,
   LogOut,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
-import { mockSubscription, mockUser } from "@/lib/mock-data";
+import { useSession } from "@/hooks/use-session";
+import { useSubscription } from "@/lib/queries";
+import { supabase } from "@/lib/supabaseClient";
 import { Badge } from "@/components/ui/badge";
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
@@ -45,6 +48,30 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const navigate = useNavigate();
+  const { session, user, loading } = useSession();
+  const { data: subscription } = useSubscription(!!session);
+
+  useEffect(() => {
+    if (!loading && !session) navigate({ to: "/auth" });
+  }, [loading, session, navigate]);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  };
+
+  if (loading || !session) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const usage = subscription?.current_usage ?? 0;
+  const limit = subscription?.spend_limit ?? 0;
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar px-3 py-4 md:flex">
@@ -74,35 +101,33 @@ export function AppShell({
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Plan</span>
               <Badge variant="outline" className="capitalize">
-                {mockSubscription.tier}
+                {subscription?.tier ?? "—"}
               </Badge>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
               <div
                 className="h-full rounded-full bg-accent"
-                style={{
-                  width: `${Math.min(100, (mockSubscription.current_usage / mockSubscription.spend_limit) * 100)}%`,
-                }}
+                style={{ width: `${limit ? Math.min(100, (usage / limit) * 100) : 0}%` }}
               />
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground tabular">
-              ${mockSubscription.current_usage.toFixed(2)} of $
-              {mockSubscription.spend_limit.toFixed(0)} limit
+              ${usage.toFixed(2)} of ${limit.toFixed(0)} limit
             </p>
           </div>
 
           <div className="flex items-center gap-2 rounded-md px-1.5 py-1.5">
             <div className="grid size-7 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-medium">
-              {mockUser.email.slice(0, 2).toUpperCase()}
+              {(user?.email ?? "??").slice(0, 2).toUpperCase()}
             </div>
-            <span className="truncate text-xs text-muted-foreground">{mockUser.email}</span>
-            <Link
-              to="/auth"
+            <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+            <button
+              type="button"
+              onClick={signOut}
               aria-label="Sign out"
               className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
             >
               <LogOut className="size-3.5" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
