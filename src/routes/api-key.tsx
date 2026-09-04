@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Copy, Eye, EyeOff, RefreshCw, TriangleAlert } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { mockUser } from "@/lib/mock-data";
+import { useSession } from "@/hooks/use-session";
+import { useRegenerateApiKey, useUserRow } from "@/lib/queries";
 
 export const Route = createFileRoute("/api-key")({
   head: () => ({
@@ -38,27 +39,31 @@ export const Route = createFileRoute("/api-key")({
 });
 
 function ApiKeyPage() {
-  const [key, setKey] = useState(mockUser.api_key);
+  const { session } = useSession();
+  const { data: userRow, isLoading } = useUserRow(!!session);
+  const regen = useRegenerateApiKey();
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const masked = `${key.slice(0, 11)}${"•".repeat(20)}${key.slice(-4)}`;
+  const key = userRow?.api_key ?? "";
+  const masked = key ? `${key.slice(0, 11)}${"•".repeat(20)}${key.slice(-4)}` : "—";
 
   const copy = async () => {
+    if (!key) return;
     await navigator.clipboard.writeText(key);
     setCopied(true);
     toast.success("API key copied to clipboard");
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const regenerate = () => {
-    // STUB: replace with a server function that rotates users.api_key
-    const rand = Array.from({ length: 32 }, () =>
-      "0123456789abcdef".charAt(Math.floor(Math.random() * 16)),
-    ).join("");
-    setKey(`tk_live_${rand}`);
-    setRevealed(true);
-    toast.success("New API key generated", { description: "The previous key stopped working." });
+  const regenerate = async () => {
+    try {
+      await regen.mutateAsync();
+      setRevealed(true);
+      toast.success("New API key generated", { description: "The previous key stopped working." });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not regenerate key");
+    }
   };
 
   return (
@@ -72,7 +77,9 @@ function ApiKeyPage() {
             <div>
               <h2 className="text-sm font-medium">Secret key</h2>
               <p className="text-xs text-muted-foreground">
-                Created {new Date(mockUser.created_at).toLocaleDateString()}
+                {userRow?.created_at
+                  ? `Created ${new Date(userRow.created_at).toLocaleDateString()}`
+                  : "Loading account…"}
               </p>
             </div>
             <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
@@ -82,7 +89,7 @@ function ApiKeyPage() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface px-3 py-2.5 font-mono text-sm">
-              {revealed ? key : masked}
+              {isLoading ? "Loading…" : revealed ? key : masked}
             </code>
             <Button variant="outline" size="icon" onClick={() => setRevealed(!revealed)}>
               {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -127,8 +134,12 @@ function ApiKeyPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline">
-                  <RefreshCw className="size-4" />
+                <Button variant="outline" disabled={regen.isPending}>
+                  {regen.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
                   Regenerate
                 </Button>
               </AlertDialogTrigger>
