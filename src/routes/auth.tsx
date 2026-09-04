@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
 
@@ -7,6 +7,8 @@ import { Logo } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/lib/supabaseClient";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -29,22 +31,46 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { session } = useSession();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (session) navigate({ to: "/" });
+  }, [session, navigate]);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true);
-    // STUB: replace with supabase.auth.signInWithPassword / signUp
-    setTimeout(() => {
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Signed in");
+        navigate({ to: "/" });
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        if (data.session) {
+          toast.success("Account created");
+          navigate({ to: "/" });
+        } else {
+          toast.success("Check your email", {
+            description: "Confirm your address to finish creating the account.",
+          });
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
       setPending(false);
-      toast.success(mode === "signin" ? "Signed in" : "Account created", {
-        description: "Demo mode — auth wires up once the backend is connected.",
-      });
-      navigate({ to: "/" });
-    }, 600);
+    }
   };
 
   return (
@@ -120,10 +146,6 @@ function AuthPage() {
             </button>
           </p>
         </div>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Demo shell — email/password auth activates with the backend connection.
-        </p>
       </div>
     </div>
   );
