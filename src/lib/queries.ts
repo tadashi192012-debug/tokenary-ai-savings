@@ -8,6 +8,8 @@ import type {
   SavingsSummary,
   SubscriptionRow,
   UserRow,
+  Provider,
+  ProviderKeyDisplay,
 } from "@/lib/types";
 
 /** RLS scopes every one of these reads to auth.uid(). */
@@ -158,5 +160,50 @@ export function useRegenerateApiKey() {
       return key;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users", "me"] }),
+  });
+}
+
+/** Provider keys: reads come from the redacted view, writes go through edge functions. */
+
+export function useProviderKeys(enabled = true) {
+  return useQuery({
+    queryKey: ["provider_keys_display"],
+    enabled,
+    queryFn: async (): Promise<ProviderKeyDisplay[]> => {
+      const { data, error } = await supabase
+        .from("provider_keys_display")
+        .select("id, provider, nickname, last_four, is_active, created_at, revoked_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ProviderKeyDisplay[];
+    },
+  });
+}
+
+export function useStoreProviderKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { nickname: string; provider: Provider; api_key: string }) => {
+      const { data, error } = await supabase.functions.invoke("store-provider-key", {
+        body: input,
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error("Provider key could not be stored");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["provider_keys_display"] }),
+  });
+}
+
+export function useRevokeProviderKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (providerKeyId: string) => {
+      const { data, error } = await supabase.functions.invoke("revoke-provider-key", {
+        body: { provider_key_id: providerKeyId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error("Provider key could not be revoked");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["provider_keys_display"] }),
   });
 }
