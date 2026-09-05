@@ -76,3 +76,26 @@ export const currency = (n: number, digits = 2) =>
 
 export const compactNumber = (n: number) =>
   (n ?? 0).toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+/** Provider credential surfaces. Plaintext keys never reach the client. */
+
+export type Provider = "openai" | "anthropic" | "openrouter" | "google" | "other";
+
+export const PROVIDERS: { value: Provider; label: string }[] = [
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openrouter", label: "OpenRouter" },
+  { value: "google", label: "Google" },
+  { value: "other", label: "Other" },
+];
+
+/** public.provider_keys_display — contains no key material. */
+export interface ProviderKeyDisplay {
+  id: string;
+  provider: Provider;
+  nickname: string;
+  last_four: string;
+  is_active: boolean;
+  created_at: string;
+  revoked_at: string | null;
+}
