@@ -153,7 +153,7 @@ export function AppShell({
               <Link
                 key={to}
                 to={to}
-                activeOptions={{ exact: to === "/" }}
+                activeOptions={{ exact: to === "/dashboard" }}
                 className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs text-muted-foreground"
                 activeProps={{ className: "bg-secondary text-foreground" }}
               >
