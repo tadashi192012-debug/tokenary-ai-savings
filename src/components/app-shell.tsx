@@ -17,7 +17,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Badge } from "@/components/ui/badge";
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/rules", label: "Routing rules", icon: GitBranch },
   { to: "/api-key", label: "API key", icon: KeyRound },
   { to: "/providers", label: "Providers", icon: Plug },
