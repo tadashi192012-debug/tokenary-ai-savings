@@ -38,7 +38,7 @@ function AuthPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (session) navigate({ to: "/" });
+    if (session) navigate({ to: "/dashboard" });
   }, [session, navigate]);
 
   const submit = async (e: React.FormEvent) => {
