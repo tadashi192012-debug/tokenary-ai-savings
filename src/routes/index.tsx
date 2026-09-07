@@ -7,7 +7,7 @@ import {
   KeyRound,
   Layers,
   Lock,
-  Route,
+  Route as RouteIcon,
   Shield,
   ShieldCheck,
   Users,
