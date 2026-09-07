@@ -59,7 +59,7 @@ function AuthPage() {
         if (error) throw error;
         if (data.session) {
           toast.success("Account created");
-          navigate({ to: "/" });
+          navigate({ to: "/dashboard" });
         } else {
           toast.success("Check your email", {
             description: "Confirm your address to finish creating the account.",
