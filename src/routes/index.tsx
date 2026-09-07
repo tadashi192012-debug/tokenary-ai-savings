@@ -204,7 +204,7 @@ function HowItWorks() {
     },
     {
       number: "02",
-      icon: Route,
+      icon: RouteIcon,
       title: "Set simple routing rules",
       body: "Choose a task type, a cheap model to try first, a fallback model, and a quality threshold. That's the whole policy.",
     },
