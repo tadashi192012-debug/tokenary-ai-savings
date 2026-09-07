@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiKeyRouteImport } from './routes/api-key'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -29,6 +30,11 @@ const ApiKeyRoute = ApiKeyRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProvidersRoute = ProvidersRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api-key': typeof ApiKeyRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/providers': typeof ProvidersRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api-key': typeof ApiKeyRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/providers': typeof ProvidersRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
@@ -68,20 +76,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api-key': typeof ApiKeyRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/providers': typeof ProvidersRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api-key' | '/auth' | '/providers' | '/rules' | '/settings'
+  fullPaths:
+    | '/'
+    | '/api-key'
+    | '/auth'
+    | '/dashboard'
+    | '/providers'
+    | '/rules'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api-key' | '/auth' | '/providers' | '/rules' | '/settings'
+  to:
+    | '/'
+    | '/api-key'
+    | '/auth'
+    | '/dashboard'
+    | '/providers'
+    | '/rules'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/api-key'
     | '/auth'
+    | '/dashboard'
     | '/providers'
     | '/rules'
     | '/settings'
@@ -91,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiKeyRoute: typeof ApiKeyRoute
   AuthRoute: typeof AuthRoute
+  DashboardRoute: typeof DashboardRoute
   ProvidersRoute: typeof ProvidersRoute
   RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
@@ -117,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/providers': {
@@ -147,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiKeyRoute: ApiKeyRoute,
   AuthRoute: AuthRoute,
+  DashboardRoute: DashboardRoute,
   ProvidersRoute: ProvidersRoute,
   RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
