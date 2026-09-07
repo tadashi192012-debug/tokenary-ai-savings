@@ -49,7 +49,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in");
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
