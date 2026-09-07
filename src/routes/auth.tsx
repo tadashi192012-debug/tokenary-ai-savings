@@ -38,7 +38,7 @@ function AuthPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (session) navigate({ to: "/" });
+    if (session) navigate({ to: "/dashboard" });
   }, [session, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -49,7 +49,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Signed in");
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -59,7 +59,7 @@ function AuthPage() {
         if (error) throw error;
         if (data.session) {
           toast.success("Account created");
-          navigate({ to: "/" });
+          navigate({ to: "/dashboard" });
         } else {
           toast.success("Check your email", {
             description: "Confirm your address to finish creating the account.",

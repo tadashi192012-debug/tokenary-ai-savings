@@ -17,7 +17,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Badge } from "@/components/ui/badge";
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/rules", label: "Routing rules", icon: GitBranch },
   { to: "/api-key", label: "API key", icon: KeyRound },
   { to: "/providers", label: "Providers", icon: Plug },
@@ -86,7 +86,7 @@ export function AppShell({
             <Link
               key={to}
               to={to}
-              activeOptions={{ exact: to === "/" }}
+              activeOptions={{ exact: to === "/dashboard" }}
               className="group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               activeProps={{
                 className: "bg-sidebar-accent text-sidebar-accent-foreground",
@@ -153,7 +153,7 @@ export function AppShell({
               <Link
                 key={to}
                 to={to}
-                activeOptions={{ exact: to === "/" }}
+                activeOptions={{ exact: to === "/dashboard" }}
                 className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs text-muted-foreground"
                 activeProps={{ className: "bg-secondary text-foreground" }}
               >

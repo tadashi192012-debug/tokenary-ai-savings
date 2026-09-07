@@ -1,380 +1,457 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { ArrowDownRight, Activity, Zap, Radio } from "lucide-react";
-
-import { AppShell } from "@/components/app-shell";
-import { Badge } from "@/components/ui/badge";
-import { useSession } from "@/hooks/use-session";
-import { useDailySpend, useRecentCalls, useSavingsSummary } from "@/lib/queries";
-import { supabase } from "@/lib/supabaseClient";
-import { compactNumber, currency, type ApiCallRow } from "@/lib/types";
+  ArrowRight,
+  BarChart3,
+  Check,
+  CreditCard,
+  KeyRound,
+  Layers,
+  Lock,
+  Route as RouteIcon,
+  Shield,
+  ShieldCheck,
+  Users,
+  Zap,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Loding Tokenary" },
+      { title: "Loding Tokenary — Stop surprise AI invoices" },
       {
         name: "description",
         content:
-          "See monthly AI spend versus baseline, daily spend by model, and a live feed of routed API calls.",
+          "Tokenary routes your OpenAI, Anthropic and OpenRouter calls to cheaper models automatically, falls back when quality fails, and shows you exactly what you saved.",
       },
-      { property: "og:title", content: "Dashboard — Loding Tokenary" },
+      { property: "og:title", content: "Loding Tokenary — Stop surprise AI invoices" },
       {
         property: "og:description",
-        content: "Track AI spend, model routing and realized savings in one dashboard.",
+        content:
+          "Automatic model routing and spend tracking for small dev teams and solo founders.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Dashboard,
+  component: LandingPage,
 });
 
-const SERIES_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
-
-function ChartTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const total = payload.reduce((s: number, p: any) => s + (p.value ?? 0), 0);
+function LandingPage() {
   return (
-    <div className="rounded-lg border border-border bg-popover p-3 text-xs shadow-lg">
-      <p className="mb-2 font-medium">
-        {new Date(label).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-      </p>
-      <div className="space-y-1">
-        {payload.map((p: any) => (
-          <div key={p.dataKey} className="flex items-center gap-2">
-            <span className="size-1.5 rounded-full" style={{ background: p.color }} />
-            <span className="text-muted-foreground">{p.dataKey}</span>
-            <span className="ml-auto tabular">{currency(p.value, 2)}</span>
-          </div>
-        ))}
-        <div className="mt-1.5 flex justify-between border-t border-border pt-1.5">
-          <span className="text-muted-foreground">Total</span>
-          <span className="tabular font-medium">{currency(total)}</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+
+      <main>
+        <Hero />
+        <Problem />
+        <HowItWorks />
+        <Pricing />
+        <Security />
+        <FinalCta />
+      </main>
+
+      <Footer />
     </div>
   );
 }
 
-function Dashboard() {
-  const { session, user } = useSession();
-  const enabled = !!session;
-  const queryClient = useQueryClient();
-
-  const { data: savings } = useSavingsSummary(enabled);
-  const { data: spendRows } = useDailySpend(enabled);
-  const { data: recentCalls } = useRecentCalls(24, enabled);
-
-  const [liveCalls, setLiveCalls] = useState<ApiCallRow[]>([]);
-  const [liveId, setLiveId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLiveCalls(recentCalls ?? []);
-  }, [recentCalls]);
-
-  // Realtime: new api_calls rows stream straight into the table.
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("api_calls_feed")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "api_calls",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const row = payload.new as ApiCallRow;
-          setLiveId(row.id);
-          setLiveCalls((prev) => [row, ...prev.filter((c) => c.id !== row.id)].slice(0, 24));
-          queryClient.invalidateQueries({ queryKey: ["v_savings_summary"] });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, queryClient]);
-
-  const { chartData, models } = useMemo(() => {
-    const byDay = new Map<string, Record<string, number | string>>();
-    const seen = new Set<string>();
-    for (const row of spendRows ?? []) {
-      seen.add(row.model_used);
-      const entry = byDay.get(row.day) ?? { day: row.day };
-      entry[row.model_used] = Number(row.spend);
-      byDay.set(row.day, entry);
-    }
-    return { chartData: Array.from(byDay.values()), models: Array.from(seen) };
-  }, [spendRows]);
-
-  const callsToday = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return liveCalls.filter((c) => c.created_at?.slice(0, 10) === today).length;
-  }, [liveCalls]);
-
-  const avgLatency = useMemo(() => {
-    if (!liveCalls.length) return 0;
-    return Math.round(liveCalls.reduce((s, c) => s + (c.latency_ms ?? 0), 0) / liveCalls.length);
-  }, [liveCalls]);
-
+function Header() {
   return (
-    <AppShell
-      title="Dashboard"
-      description="Current month · all providers"
-      actions={
-        <Badge variant="outline" className="gap-1.5 font-normal">
-          <Radio className="size-3 text-accent" />
-          Live
-        </Badge>
-      }
-    >
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="panel relative overflow-hidden p-6 lg:col-span-2">
-          <div
-            className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full opacity-[0.13] blur-3xl"
-            style={{ background: "var(--accent)" }}
-          />
-          <p className="text-sm text-muted-foreground">Saved this month by routing</p>
-          <div className="mt-2 flex flex-wrap items-end gap-4">
-            <span className="tabular text-6xl font-semibold tracking-tight text-accent">
-              {currency(savings?.saved ?? 0)}
-            </span>
-            <span className="mb-2 inline-flex items-center gap-1 rounded-md bg-accent-soft px-2 py-1 text-xs font-medium text-accent">
-              <ArrowDownRight className="size-3.5" />
-              {(savings?.savings_pct ?? 0).toFixed(1)}% below baseline
-            </span>
+    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 md:px-8">
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="relative grid size-7 place-items-center rounded-md border border-border-strong bg-secondary">
+            <span className="size-2 rounded-[2px] bg-accent" />
           </div>
-          <div className="mt-6 grid gap-4 border-t border-border pt-5 sm:grid-cols-3">
-            <Stat label="Actual spend" value={currency(savings?.month_spend ?? 0)} />
-            <Stat
-              label="Baseline (no routing)"
-              value={currency(savings?.baseline_spend ?? 0)}
-              muted
-            />
-            <Stat
-              label="Routed calls"
-              value={`${compactNumber(savings?.routed_calls ?? 0)} / ${compactNumber(
-                savings?.total_calls ?? 0,
-              )}`}
-            />
-          </div>
-        </section>
+          <span className="text-[15px] font-semibold tracking-tight">
+            Loding<span className="text-muted-foreground"> Tokenary</span>
+          </span>
+        </Link>
 
-        <div className="grid gap-4">
-          <MiniCard
-            icon={Activity}
-            label="Calls today"
-            value={compactNumber(callsToday)}
-            hint="From the latest 24 logged calls"
-          />
-          <MiniCard
-            icon={Zap}
-            label="Avg latency"
-            value={`${avgLatency} ms`}
-            hint="Across recent calls"
-          />
+        <div className="flex items-center gap-3">
+          <Link
+            to="/auth"
+            className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/auth"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Start free
+            <ArrowRight className="size-3.5" />
+          </Link>
         </div>
       </div>
+    </header>
+  );
+}
 
-      <section className="panel mt-4 p-5">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-medium">Daily spend by model</h2>
-            <p className="text-xs text-muted-foreground">v_daily_spend_by_model</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {models.map((m, i) => (
-              <span key={m} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className="size-1.5 rounded-full"
-                  style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
-                />
-                {m}
-              </span>
-            ))}
-          </div>
+function Hero() {
+  return (
+    <section className="relative overflow-hidden px-5 pb-20 pt-16 md:px-8 md:pb-28 md:pt-24">
+      <div className="grid-lines pointer-events-none absolute inset-0 opacity-60" />
+      <div
+        className="pointer-events-none absolute left-1/2 top-0 h-80 w-[44rem] -translate-x-1/2 rounded-full opacity-[0.15] blur-3xl"
+        style={{ background: "var(--accent)" }}
+      />
+
+      <div className="relative mx-auto max-w-3xl text-center">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
+          <Zap className="size-3 text-accent" />
+          Built for teams spending $500–$20k/mo on AI APIs
+        </span>
+
+        <h1 className="mt-6 text-4xl font-semibold leading-[1.12] tracking-tight text-foreground md:text-5xl lg:text-6xl">
+          Stop opening surprise{" "}
+          <span className="text-accent accent-glow">$5,000 AI invoices</span> with no idea which
+          feature caused them.
+        </h1>
+
+        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+          Tokenary sits between your app and OpenAI, Anthropic, and OpenRouter. It routes each call
+          to the cheapest model that can handle it, falls back to a stronger one when quality checks
+          fail, and shows you exactly where your money went — and what you saved.
+        </p>
+
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/auth"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-lg transition-all hover:bg-accent/90"
+            style={{ boxShadow: "var(--glow-accent)" }}
+          >
+            Start free
+            <ArrowRight className="size-4" />
+          </Link>
+          <span className="text-xs text-muted-foreground">No credit card required.</span>
         </div>
 
-        <div className="h-72 w-full">
-          {chartData.length === 0 ? (
-            <div className="grid h-full place-items-center text-sm text-muted-foreground">
-              No spend recorded yet.
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Check className="size-3.5 text-accent" />
+            Works with your existing SDK
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="size-3.5 text-accent" />
+            Real-time savings dashboard
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check className="size-3.5 text-accent" />
+            Encrypted provider keys
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Problem() {
+  const cards = [
+    {
+      icon: BarChart3,
+      title: "You don't know where the money goes",
+      body: "Three providers, five models, twelve services. Your invoice is a single number. You have no idea which product decision doubled your spend last month.",
+    },
+    {
+      icon: Layers,
+      title: "Every model costs something different",
+      body: "GPT-4o, Claude Sonnet, Haiku, Mini. The right model for a task can be 10x cheaper than the wrong one. You're probably overpaying on every low-stakes call.",
+    },
+    {
+      icon: Users,
+      title: "Nobody owns this problem on your team",
+      body: "You're a founder or a senior dev, not a procurement department. You don't have time to babysit API dashboards. So the bill keeps growing unchecked.",
+    },
+  ];
+
+  return (
+    <section className="border-t border-border px-5 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            AI spend is the surprise bill nobody planned for
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            Most teams set up a provider key, ship a feature, and find out the cost when the
+            invoice arrives. Tokenary fixes that at the source.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {cards.map((c) => (
+            <div key={c.title} className="panel p-6">
+              <div className="grid size-9 place-items-center rounded-md border border-border bg-surface">
+                <c.icon className="size-4 text-accent" />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold">{c.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.body}</p>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  stroke="var(--muted-foreground)"
-                  fontSize={11}
-                  minTickGap={28}
-                  tickFormatter={(v) =>
-                    new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                  }
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  stroke="var(--muted-foreground)"
-                  fontSize={11}
-                  tickFormatter={(v) => `$${v}`}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--border-strong)" }} />
-                {models.map((m, i) => (
-                  <Line
-                    key={m}
-                    type="monotone"
-                    dataKey={m}
-                    stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
-                    strokeWidth={i === 0 ? 2 : 1.5}
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          )}
+          ))}
         </div>
-      </section>
-
-      <section className="panel mt-4 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-sm font-medium">Recent API calls</h2>
-            <p className="text-xs text-muted-foreground">Streaming live from api_calls</p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <Th>Time</Th>
-                <Th>Model used</Th>
-                <Th>Requested</Th>
-                <Th className="text-right">Tokens in / out</Th>
-                <Th className="text-right">Latency</Th>
-                <Th className="text-right">Cost</Th>
-                <Th className="text-right">Routed</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {liveCalls.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
-                    No calls logged yet.
-                  </td>
-                </tr>
-              ) : (
-                liveCalls.map((c) => (
-                  <tr
-                    key={c.id}
-                    className={`border-b border-border/60 transition-colors last:border-0 hover:bg-secondary/40 ${
-                      c.id === liveId ? "animate-in fade-in bg-accent-soft" : ""
-                    }`}
-                  >
-                    <Td className="whitespace-nowrap text-muted-foreground tabular">
-                      {new Date(c.created_at).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </Td>
-                    <Td className="font-mono text-xs">{c.model_used}</Td>
-                    <Td className="font-mono text-xs text-muted-foreground">
-                      {c.original_model_requested}
-                    </Td>
-                    <Td className="text-right tabular text-muted-foreground">
-                      {(c.tokens_in ?? 0).toLocaleString()} / {(c.tokens_out ?? 0).toLocaleString()}
-                    </Td>
-                    <Td className="text-right tabular text-muted-foreground">
-                      {c.latency_ms} ms
-                    </Td>
-                    <Td className="text-right tabular">{currency(Number(c.cost ?? 0), 4)}</Td>
-                    <Td className="text-right">
-                      {c.was_routed ? (
-                        <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent">
-                          routed
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">direct</span>
-                      )}
-                    </Td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </AppShell>
-  );
-}
-
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-5 py-2.5 font-medium ${className}`}>{children}</th>;
-}
-
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-5 py-2.5 ${className}`}>{children}</td>;
-}
-
-function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={`tabular mt-1 text-xl font-medium ${
-          muted ? "text-muted-foreground line-through decoration-border-strong" : ""
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MiniCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="panel flex-1 p-5">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" />
-        <span className="text-xs">{label}</span>
       </div>
-      <p className="tabular mt-2 text-2xl font-medium">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-    </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    {
+      number: "01",
+      icon: KeyRound,
+      title: "Connect your provider keys",
+      body: "Paste in your OpenAI, Anthropic, OpenRouter, or Google keys. They're encrypted immediately and never shown again.",
+    },
+    {
+      number: "02",
+      icon: RouteIcon,
+      title: "Set simple routing rules",
+      body: "Choose a task type, a cheap model to try first, a fallback model, and a quality threshold. That's the whole policy.",
+    },
+    {
+      number: "03",
+      icon: Zap,
+      title: "Tokenary routes automatically",
+      body: "Every call hits the cheap model first. If quality checks fail, it falls back. You change zero application code.",
+    },
+    {
+      number: "04",
+      icon: BarChart3,
+      title: "Watch your savings dashboard update live",
+      body: "See month-over-month spend vs. baseline, daily spend by model, and a live feed of routed calls as they happen.",
+    },
+  ];
+
+  return (
+    <section className="border-t border-border bg-surface/30 px-5 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">How it works</h2>
+          <p className="mt-3 text-muted-foreground">
+            No proxy code to write. No model benchmarks to maintain. You add keys, set rules, and
+            point your SDK at Tokenary.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((s) => (
+            <div key={s.number} className="panel relative p-6">
+              <span className="absolute right-5 top-5 font-mono text-xs text-muted-foreground/60">
+                {s.number}
+              </span>
+              <div className="grid size-9 place-items-center rounded-md border border-border bg-surface">
+                <s.icon className="size-4 text-accent" />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold">{s.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  const tiers = [
+    {
+      name: "Free",
+      price: "$0",
+      range: "Up to $1,000/mo tracked spend",
+      perks: ["1 routing rule", "7-day call history", "Community support", "Realtime dashboard"],
+      cta: "Start free",
+      current: false,
+    },
+    {
+      name: "Starter",
+      price: "$39",
+      range: "Up to $10,000/mo tracked spend",
+      perks: [
+        "Unlimited routing rules",
+        "90-day call history",
+        "Quality scoring",
+        "Email support",
+      ],
+      cta: "Start free",
+      current: false,
+      highlight: true,
+    },
+    {
+      name: "Team",
+      price: "$249",
+      range: "Unlimited tracked spend",
+      perks: [
+        "Everything in Starter",
+        "Per-client spend tracking",
+        "Shared workspaces",
+        "Priority support",
+      ],
+      cta: "Start free",
+      current: false,
+    },
+  ];
+
+  return (
+    <section className="border-t border-border px-5 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Pricing built for indie teams, not procurement departments
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            No annual contracts, no sales calls. Pay monthly and upgrade when your tracked spend
+            grows.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {tiers.map((t) => (
+            <div
+              key={t.name}
+              className={`panel flex flex-col p-6 ${t.highlight ? "border-accent/40" : ""}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">{t.name}</span>
+                {t.highlight && (
+                  <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                    Most popular
+                  </span>
+                )}
+              </div>
+              <div className="mt-4">
+                <span className="text-4xl font-semibold tracking-tight">{t.price}</span>
+                <span className="text-sm text-muted-foreground"> / mo</span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t.range}</p>
+
+              <ul className="mt-6 flex-1 space-y-3">
+                {t.perks.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                    <Check className="mt-0.5 size-4 shrink-0 text-accent" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                to="/auth"
+                className={`mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                  t.highlight
+                    ? "bg-accent text-accent-foreground hover:bg-accent/90"
+                    : "border border-border bg-background text-foreground hover:bg-secondary"
+                }`}
+              >
+                {t.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Security() {
+  const items = [
+    {
+      icon: Lock,
+      title: "Encrypted at rest",
+      body: "Provider keys are encrypted the moment they hit our servers. We never store or log plaintext keys.",
+    },
+    {
+      icon: Shield,
+      title: "Never shown again",
+      body: "Once you paste a key, the dashboard only shows the provider and the last four characters. The full key is gone from the UI.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Full audit log",
+      body: "Every access to your provider keys is logged. You can revoke a key instantly from the dashboard.",
+    },
+    {
+      icon: CreditCard,
+      title: "No prompts stored",
+      body: "Tokenary routes your traffic; it doesn't retain the content of your requests unless you explicitly opt in.",
+    },
+  ];
+
+  return (
+    <section className="border-t border-border bg-surface/30 px-5 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Your keys are treated like secrets — because they are
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            We know you're pasting real production credentials. Security isn't a footnote here.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {items.map((i) => (
+            <div key={i.title} className="panel flex gap-4 p-5">
+              <div className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-surface">
+                <i.icon className="size-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">{i.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{i.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCta() {
+  return (
+    <section className="border-t border-border px-5 py-16 md:px-8 md:py-24">
+      <div className="relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-surface px-6 py-12 text-center md:px-12">
+        <div
+          className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full opacity-[0.12] blur-3xl"
+          style={{ background: "var(--accent)" }}
+        />
+        <h2 className="relative text-2xl font-semibold tracking-tight md:text-3xl">
+          Find out what routing saves you this month
+        </h2>
+        <p className="relative mx-auto mt-3 max-w-lg text-muted-foreground">
+          Connect your first provider key, set one routing rule, and watch the dashboard show your
+          baseline spend drop in real time.
+        </p>
+        <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/auth"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-all hover:bg-accent/90"
+            style={{ boxShadow: "var(--glow-accent)" }}
+          >
+            Start free
+            <ArrowRight className="size-4" />
+          </Link>
+          <span className="text-xs text-muted-foreground">Free forever up to $1,000/mo tracked.</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-border px-5 py-8 md:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
+        <div className="flex items-center gap-2.5">
+          <div className="relative grid size-6 place-items-center rounded-md border border-border-strong bg-secondary">
+            <span className="size-1.5 rounded-[2px] bg-accent" />
+          </div>
+          <span className="text-sm font-semibold tracking-tight">
+            Loding<span className="text-muted-foreground"> Tokenary</span>
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          © {new Date().getFullYear()} Loding Tokenary. Built for small teams with big AI bills.
+        </p>
+      </div>
+    </footer>
   );
 }
