@@ -1,6 +1,6 @@
 /** Shapes mirroring the Supabase tables/views backing these screens. */
 
-export type Tier = "free" | "starter" | "team";
+export type Tier = "free" | "starter" | "pro" | "team";
 
 export interface UserRow {
   id: string;
