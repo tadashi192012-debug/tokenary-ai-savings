@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
 import { useSavingsSummary, useSubscription, useUserRow } from "@/lib/queries";
-import { currency, type Tier } from "@/lib/types";
+import { PRICING_TIERS } from "@/lib/pricing";
+import { currency } from "@/lib/types";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
