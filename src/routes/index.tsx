@@ -253,43 +253,8 @@ function HowItWorks() {
 }
 
 function Pricing() {
-  const tiers = [
-    {
-      name: "Free",
-      price: "$0",
-      range: "Up to $1,000/mo tracked spend",
-      perks: ["1 routing rule", "7-day call history", "Community support", "Realtime dashboard"],
-      cta: "Start free",
-      current: false,
-    },
-    {
-      name: "Starter",
-      price: "$39",
-      range: "Up to $10,000/mo tracked spend",
-      perks: [
-        "Unlimited routing rules",
-        "90-day call history",
-        "Quality scoring",
-        "Email support",
-      ],
-      cta: "Start free",
-      current: false,
-      highlight: true,
-    },
-    {
-      name: "Team",
-      price: "$249",
-      range: "Unlimited tracked spend",
-      perks: [
-        "Everything in Starter",
-        "Per-client spend tracking",
-        "Shared workspaces",
-        "Priority support",
-      ],
-      cta: "Start free",
-      current: false,
-    },
-  ];
+  const tiers = PRICING_TIERS;
+
 
   return (
     <section className="border-t border-border px-5 py-16 md:px-8 md:py-24">
