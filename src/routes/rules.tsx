@@ -48,7 +48,7 @@ type Draft = {
 const EMPTY: Draft = {
   task_type: "",
   cheap_model: MODELS[0],
-  fallback_model: MODELS[2],
+  fallback_model: MODELS[1],
   quality_threshold: 0.85,
 };
 

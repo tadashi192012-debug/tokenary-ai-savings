@@ -115,12 +115,13 @@ function AuthPage() {
                 id="password"
                 type="password"
                 required
-                minLength={6}
+                minLength={10}
                 autoComplete={mode === "signin" ? "current-password" : "new-password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">At least 10 characters.</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={pending}>

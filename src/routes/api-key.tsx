@@ -110,13 +110,34 @@ function ApiKeyPage() {
         <section className="panel p-5">
           <h2 className="text-sm font-medium">Using the key</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Point your existing SDK at the gateway and send the key as a bearer token.
+            POST your prompt to the proxy endpoint and send the key in the{" "}
+            <code className="font-mono">x-tokenary-key</code> header.
           </p>
           <pre className="mt-4 overflow-x-auto rounded-md border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-            {`client = OpenAI(
-    base_url="https://gateway.tokenary.dev/v1",
-    api_key="${revealed ? key : masked}",
-)`}
+            {`const res = await fetch(
+  "https://ptfaaqrpbcvbpyrtxwkq.supabase.co/functions/v1/proxy",
+  {
+    method: "POST",
+    headers: {
+      "x-tokenary-key": "${revealed ? key : "YOUR_KEY"}",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: "Hello!",
+      task_type: "general",
+    }),
+  },
+);
+
+const data = await res.json();
+// {
+//   "model_used": "gpt-4o-mini",
+//   "was_routed": true,
+//   "cost": 0.00012,
+//   "tokens_in": 10,
+//   "tokens_out": 24,
+//   "response": "the actual model's answer"
+// }`}
           </pre>
         </section>
 

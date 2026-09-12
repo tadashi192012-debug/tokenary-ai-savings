@@ -1,6 +1,6 @@
 /** Shapes mirroring the Supabase tables/views backing these screens. */
 
-export type Tier = "free" | "starter" | "team";
+export type Tier = "free" | "starter" | "pro" | "team";
 
 export interface UserRow {
   id: string;
@@ -66,9 +66,18 @@ export interface SavingsSummary {
 
 export const MODELS = [
   "gpt-4o-mini",
-  "claude-haiku-4",
   "gpt-4o",
-  "claude-sonnet-4",
+  "gpt-4-turbo",
+  "gpt-3.5-turbo",
+  "o1-mini",
+  "o1",
+  "claude-3-5-haiku-20241022",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-haiku-20240307",
+  "claude-3-opus-20240229",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ] as const;
 
 export const currency = (n: number, digits = 2) =>

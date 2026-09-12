@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
 import { useSavingsSummary, useSubscription, useUserRow } from "@/lib/queries";
-import { currency, type Tier } from "@/lib/types";
+import { PRICING_TIERS } from "@/lib/pricing";
+import { currency } from "@/lib/types";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -26,26 +28,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-const TIERS: { tier: Tier; price: string; limit: string; perks: string[] }[] = [
-  {
-    tier: "free",
-    price: "$0",
-    limit: "$25 / mo spend",
-    perks: ["1 routing rule", "7-day call history", "Community support"],
-  },
-  {
-    tier: "starter",
-    price: "$29",
-    limit: "$250 / mo spend",
-    perks: ["Unlimited routing rules", "90-day call history", "Quality scoring"],
-  },
-  {
-    tier: "team",
-    price: "$99",
-    limit: "$2,500 / mo spend",
-    perks: ["Everything in Starter", "Shared workspaces", "Priority support"],
-  },
-];
+const TIERS = PRICING_TIERS;
 
 function SettingsPage() {
   const { session, user } = useSession();
@@ -92,7 +75,7 @@ function SettingsPage() {
                   className={`panel p-5 ${current ? "border-accent/45" : ""}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium capitalize">{t.tier}</span>
+                    <span className="text-sm font-medium">{t.name}</span>
                     {current && (
                       <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                         current
@@ -116,8 +99,11 @@ function SettingsPage() {
                     variant={current ? "outline" : "default"}
                     className="mt-5 w-full"
                     disabled={current}
+                    onClick={() =>
+                      toast("Billing isn't live yet — this plan will be available soon.")
+                    }
                   >
-                    {current ? "Current plan" : `Switch to ${t.tier}`}
+                    {current ? "Current plan" : `Switch to ${t.name}`}
                   </Button>
                 </div>
               );
