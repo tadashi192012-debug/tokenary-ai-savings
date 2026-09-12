@@ -75,7 +75,7 @@ function SettingsPage() {
                   className={`panel p-5 ${current ? "border-accent/45" : ""}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium capitalize">{t.tier}</span>
+                    <span className="text-sm font-medium">{t.name}</span>
                     {current && (
                       <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                         current
@@ -99,8 +99,11 @@ function SettingsPage() {
                     variant={current ? "outline" : "default"}
                     className="mt-5 w-full"
                     disabled={current}
+                    onClick={() =>
+                      toast("Billing isn't live yet — this plan will be available soon.")
+                    }
                   >
-                    {current ? "Current plan" : `Switch to ${t.tier}`}
+                    {current ? "Current plan" : `Switch to ${t.name}`}
                   </Button>
                 </div>
               );
