@@ -287,7 +287,7 @@ function Pricing() {
                 <span className="text-4xl font-semibold tracking-tight">{t.price}</span>
                 <span className="text-sm text-muted-foreground"> / mo</span>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{t.range}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t.trackedSpend}</p>
 
               <ul className="mt-6 flex-1 space-y-3">
                 {t.perks.map((p) => (
