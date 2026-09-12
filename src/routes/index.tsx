@@ -14,6 +14,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import { PRICING_TIERS } from "@/lib/pricing";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
