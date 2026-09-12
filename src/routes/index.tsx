@@ -306,7 +306,7 @@ function Pricing() {
                     : "border border-border bg-background text-foreground hover:bg-secondary"
                 }`}
               >
-                {t.cta}
+                Start free
               </Link>
             </div>
           ))}
