@@ -26,26 +26,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-const TIERS: { tier: Tier; price: string; limit: string; perks: string[] }[] = [
-  {
-    tier: "free",
-    price: "$0",
-    limit: "$25 / mo spend",
-    perks: ["1 routing rule", "7-day call history", "Community support"],
-  },
-  {
-    tier: "starter",
-    price: "$29",
-    limit: "$250 / mo spend",
-    perks: ["Unlimited routing rules", "90-day call history", "Quality scoring"],
-  },
-  {
-    tier: "team",
-    price: "$99",
-    limit: "$2,500 / mo spend",
-    perks: ["Everything in Starter", "Shared workspaces", "Priority support"],
-  },
-];
+const TIERS = PRICING_TIERS;
 
 function SettingsPage() {
   const { session, user } = useSession();
